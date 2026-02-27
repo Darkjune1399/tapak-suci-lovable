@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -269,23 +270,39 @@ export default function CompetitionDetail() {
     if (error) {
       toast({ title: "Gagal generate bracket", description: error.message, variant: "destructive" });
     } else {
-      // Auto-advance BYE winners to next round
+      // Auto-advance BYE winners to next round (all rounds, cascading)
       if (insertedMatches) {
-        const byeMatches = insertedMatches.filter((m: any) => m.status === "bye" && m.winner_id);
         const totalR = getRoundCount(bracketParticipants.length);
-        for (const byeMatch of byeMatches) {
-          if (byeMatch.round < totalR) {
-            const nextRound = byeMatch.round + 1;
-            const nextMatchNumber = Math.ceil(byeMatch.match_number / 2);
-            const isTopSlot = byeMatch.match_number % 2 === 1;
-            const nextMatch = insertedMatches.find(
-              (m: any) => m.round === nextRound && m.match_number === nextMatchNumber
-            );
-            if (nextMatch) {
-              const updateField = isTopSlot
-                ? { participant1_id: byeMatch.winner_id }
-                : { participant2_id: byeMatch.winner_id };
-              await supabase.from("competition_matches").update(updateField).eq("id", nextMatch.id);
+        const matchesMap = new Map<string, any>();
+        insertedMatches.forEach((m: any) => matchesMap.set(m.id, { ...m }));
+
+        for (let round = 1; round <= totalR; round++) {
+          const roundMatches = Array.from(matchesMap.values()).filter((m: any) => m.round === round);
+          for (const match of roundMatches) {
+            const isBye = match.status === "bye" && match.winner_id;
+            const hasOneParticipant = !isBye && ((match.participant1_id && !match.participant2_id) || (!match.participant1_id && match.participant2_id));
+
+            if ((isBye || hasOneParticipant) && round < totalR) {
+              const winnerId = match.winner_id || match.participant1_id || match.participant2_id;
+              if (!winnerId) continue;
+
+              if (hasOneParticipant && match.status !== "bye") {
+                await supabase.from("competition_matches").update({ status: "bye", winner_id: winnerId }).eq("id", match.id);
+                matchesMap.get(match.id).status = "bye";
+                matchesMap.get(match.id).winner_id = winnerId;
+              }
+
+              const nextRound = round + 1;
+              const nextMatchNumber = Math.ceil(match.match_number / 2);
+              const isTopSlot = match.match_number % 2 === 1;
+              const nextMatch = Array.from(matchesMap.values()).find(
+                (m: any) => m.round === nextRound && m.match_number === nextMatchNumber
+              );
+              if (nextMatch) {
+                const field = isTopSlot ? "participant1_id" : "participant2_id";
+                await supabase.from("competition_matches").update({ [field]: winnerId }).eq("id", nextMatch.id);
+                matchesMap.get(nextMatch.id)[field] = winnerId;
+              }
             }
           }
         }
@@ -566,12 +583,46 @@ export default function CompetitionDetail() {
               <div className="space-y-3">
                 {canEdit && (
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={handleGenerateBracket} disabled={participants.length < 2}>
-                      <Shuffle className="mr-2 h-4 w-4" />Generate Bracket
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={handleAutoSchedule} disabled={matches.length === 0}>
-                      <CalendarClock className="mr-2 h-4 w-4" />Auto Jadwal
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="outline" disabled={participants.length < 2}>
+                          <Shuffle className="mr-2 h-4 w-4" />Generate Bracket
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Generate Bracket?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {matches.length > 0
+                              ? "Bracket yang sudah ada akan dihapus dan di-generate ulang. Data pertandingan sebelumnya akan hilang. Lanjutkan?"
+                              : "Bracket akan di-generate berdasarkan peserta yang terdaftar. Lanjutkan?"}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleGenerateBracket}>Ya, Generate</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="outline" disabled={matches.length === 0}>
+                          <CalendarClock className="mr-2 h-4 w-4" />Auto Jadwal
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Auto Penjadwalan?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Jadwal pertandingan akan di-generate ulang secara otomatis. Jadwal sebelumnya akan ditimpa. Lanjutkan?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleAutoSchedule}>Ya, Jadwalkan</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 )}
 
