@@ -1,0 +1,1 @@
+ALTER TABLE public.members ADD COLUMN jenis_kelamin text NOT NULL DEFAULT 'L';
