@@ -13,6 +13,7 @@ import UktEvents from "./pages/UktEvents";
 import UktDetail from "./pages/UktDetail";
 import CompetitionEvents from "./pages/CompetitionEvents";
 import CompetitionDetail from "./pages/CompetitionDetail";
+import MasterCategories from "./pages/MasterCategories";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <CompetitionDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/kategori-kompetisi"
+              element={
+                <ProtectedRoute allowedRoles={["super_admin", "komite"]}>
+                  <MasterCategories />
                 </ProtectedRoute>
               }
             />

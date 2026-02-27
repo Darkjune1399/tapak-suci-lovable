@@ -222,6 +222,42 @@ export type Database = {
         }
         Relationships: []
       }
+      master_competition_categories: {
+        Row: {
+          berat_max: number | null
+          berat_min: number | null
+          created_at: string
+          id: string
+          jenis_kelamin: string
+          kelompok_umur: string
+          keterangan: string | null
+          nama_kategori: string
+          updated_at: string
+        }
+        Insert: {
+          berat_max?: number | null
+          berat_min?: number | null
+          created_at?: string
+          id?: string
+          jenis_kelamin?: string
+          kelompok_umur: string
+          keterangan?: string | null
+          nama_kategori: string
+          updated_at?: string
+        }
+        Update: {
+          berat_max?: number | null
+          berat_min?: number | null
+          created_at?: string
+          id?: string
+          jenis_kelamin?: string
+          kelompok_umur?: string
+          keterangan?: string | null
+          nama_kategori?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           cabang: string | null

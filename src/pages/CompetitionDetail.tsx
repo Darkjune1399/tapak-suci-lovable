@@ -19,12 +19,16 @@ import { BracketView } from "@/components/competition/BracketView";
 import { generateBracket, getRoundCount, type BracketParticipant } from "@/lib/bracket-algorithm";
 import { generateCompetitionReport } from "@/lib/competition-report";
 
-const KATEGORI_OPTIONS = ["Tanding", "Pemasalan", "Prestasi", "Seni"];
-const UMUR_OPTIONS = ["Pra Usia Dini", "Usia Dini 1", "Usia Dini 2", "Pra-Remaja", "Remaja", "Dewasa"];
-const GENDER_OPTIONS = [
-  { value: "putra", label: "Putra" },
-  { value: "putri", label: "Putri" },
-];
+
+interface MasterCategory {
+  id: string;
+  nama_kategori: string;
+  kelompok_umur: string;
+  jenis_kelamin: string;
+  berat_min: number | null;
+  berat_max: number | null;
+  keterangan: string | null;
+}
 
 interface Competition {
   id: string;
@@ -87,6 +91,7 @@ export default function CompetitionDetail() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [members, setMembers] = useState<{ id: string; nama_lengkap: string; cabang: string | null; unit_latihan: string | null }[]>([]);
+  const [masterCategories, setMasterCategories] = useState<MasterCategory[]>([]);
   const [addCatOpen, setAddCatOpen] = useState(false);
   const [addPartOpen, setAddPartOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -174,7 +179,16 @@ export default function CompetitionDetail() {
     setMembers(data || []);
   };
 
-  useEffect(() => { fetchComp(); fetchCategories(); fetchMembers(); }, [fetchComp, fetchCategories]);
+  const fetchMasterCategories = async () => {
+    const { data } = await supabase
+      .from("master_competition_categories")
+      .select("*")
+      .order("nama_kategori")
+      .order("kelompok_umur");
+    setMasterCategories((data as MasterCategory[]) || []);
+  };
+
+  useEffect(() => { fetchComp(); fetchCategories(); fetchMembers(); fetchMasterCategories(); }, [fetchComp, fetchCategories]);
   useEffect(() => { fetchParticipants(); fetchMatches(); }, [fetchParticipants, fetchMatches]);
 
   // --- Category CRUD ---
@@ -453,7 +467,7 @@ export default function CompetitionDetail() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader><DialogTitle>Tambah Kategori</DialogTitle></DialogHeader>
-                <CategoryForm onAdd={handleAddCategory} />
+                <CategoryForm masterCategories={masterCategories} onAdd={handleAddCategory} />
               </DialogContent>
             </Dialog>
           )}
@@ -623,73 +637,54 @@ export default function CompetitionDetail() {
 
 // --- Sub-forms ---
 
-function CategoryForm({ onAdd }: { onAdd: (cat: any) => void }) {
-  const [form, setForm] = useState({
-    nama_kategori: "Tanding",
-    kelompok_umur: "Dewasa",
-    jenis_kelamin: "putra",
-    berat_min: "",
-    berat_max: "",
-    keterangan: "",
-  });
+function CategoryForm({ masterCategories, onAdd }: { masterCategories: MasterCategory[]; onAdd: (cat: any) => void }) {
+  const [selectedId, setSelectedId] = useState("");
 
-  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const selected = masterCategories.find((c) => c.id === selectedId);
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Kategori *</Label>
-        <Select value={form.nama_kategori} onValueChange={(v) => set("nama_kategori", v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
+        <Label>Pilih Kategori dari Master *</Label>
+        <Select value={selectedId} onValueChange={setSelectedId}>
+          <SelectTrigger><SelectValue placeholder="Pilih kategori..." /></SelectTrigger>
           <SelectContent>
-            {KATEGORI_OPTIONS.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+            {masterCategories.length === 0 ? (
+              <SelectItem value="__empty" disabled>Belum ada kategori master</SelectItem>
+            ) : (
+              masterCategories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.nama_kategori} - {c.kelompok_umur} ({c.jenis_kelamin === "putra" ? "Pa" : "Pi"})
+                  {c.berat_min != null && c.berat_max != null ? ` ${c.berat_min}-${c.berat_max}kg` : ""}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Kelompok Umur *</Label>
-          <Select value={form.kelompok_umur} onValueChange={(v) => set("kelompok_umur", v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {UMUR_OPTIONS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Jenis Kelamin</Label>
-          <Select value={form.jenis_kelamin} onValueChange={(v) => set("jenis_kelamin", v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {GENDER_OPTIONS.map((g) => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      {form.nama_kategori === "Tanding" && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Berat Min (kg)</Label>
-            <Input type="number" value={form.berat_min} onChange={(e) => set("berat_min", e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Berat Max (kg)</Label>
-            <Input type="number" value={form.berat_max} onChange={(e) => set("berat_max", e.target.value)} />
-          </div>
+      {selected && (
+        <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md space-y-1">
+          <p><strong>Kategori:</strong> {selected.nama_kategori}</p>
+          <p><strong>Umur:</strong> {selected.kelompok_umur}</p>
+          <p><strong>Gender:</strong> {selected.jenis_kelamin === "putra" ? "Putra" : "Putri"}</p>
+          {selected.berat_min != null && <p><strong>Berat:</strong> {selected.berat_min} - {selected.berat_max} kg</p>}
+          {selected.keterangan && <p><strong>Keterangan:</strong> {selected.keterangan}</p>}
         </div>
       )}
       <Button
         className="w-full"
-        onClick={() =>
+        disabled={!selected}
+        onClick={() => {
+          if (!selected) return;
           onAdd({
-            nama_kategori: form.nama_kategori,
-            kelompok_umur: form.kelompok_umur,
-            jenis_kelamin: form.jenis_kelamin,
-            berat_min: form.berat_min ? Number(form.berat_min) : null,
-            berat_max: form.berat_max ? Number(form.berat_max) : null,
-            keterangan: form.keterangan || null,
-          })
-        }
+            nama_kategori: selected.nama_kategori,
+            kelompok_umur: selected.kelompok_umur,
+            jenis_kelamin: selected.jenis_kelamin,
+            berat_min: selected.berat_min,
+            berat_max: selected.berat_max,
+            keterangan: selected.keterangan,
+          });
+        }}
       >
         Tambah Kategori
       </Button>
