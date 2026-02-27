@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Member = Tables<"members"> & { ranks?: { name: string } | null };
@@ -120,8 +121,10 @@ export default function Members() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Foto</TableHead>
                     <TableHead>Nama</TableHead>
                     <TableHead className="hidden sm:table-cell">NBM</TableHead>
+                    <TableHead className="hidden sm:table-cell">JK</TableHead>
                     <TableHead className="hidden md:table-cell">Unit / Cabang</TableHead>
                     <TableHead>Tingkatan</TableHead>
                     <TableHead>Status</TableHead>
@@ -130,14 +133,23 @@ export default function Members() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Memuat...</TableCell></TableRow>
+                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Memuat...</TableCell></TableRow>
                   ) : members.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Belum ada data anggota</TableCell></TableRow>
+                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Belum ada data anggota</TableCell></TableRow>
                   ) : (
                     members.map((m) => (
                       <TableRow key={m.id}>
+                        <TableCell>
+                          <Avatar className="h-8 w-8">
+                            {m.foto_url ? (
+                              <AvatarImage src={m.foto_url} alt={m.nama_lengkap} />
+                            ) : null}
+                            <AvatarFallback className="text-xs">{m.nama_lengkap.slice(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                        </TableCell>
                         <TableCell className="font-medium">{m.nama_lengkap}</TableCell>
                         <TableCell className="hidden sm:table-cell">{m.nbm || "-"}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{m.jenis_kelamin === "P" ? "Putri" : "Putra"}</TableCell>
                         <TableCell className="hidden md:table-cell">{[m.unit_latihan, m.cabang].filter(Boolean).join(" / ") || "-"}</TableCell>
                         <TableCell>
                           <Badge variant="secondary" className="bg-accent/10 text-accent">
@@ -183,6 +195,7 @@ function MemberForm({ ranks, member, onSaved }: { ranks: Rank[]; member: Member 
     tempat_lahir: member?.tempat_lahir || "",
     tanggal_lahir: member?.tanggal_lahir || "",
     nbm: member?.nbm || "",
+    jenis_kelamin: member?.jenis_kelamin || "L",
     unit_latihan: member?.unit_latihan || "",
     cabang: member?.cabang || "",
     tingkatan_id: member?.tingkatan_id?.toString() || "1",
@@ -276,6 +289,16 @@ function MemberForm({ ranks, member, onSaved }: { ranks: Rank[]; member: Member 
           <Label>No. WhatsApp</Label>
           <Input value={form.no_whatsapp} onChange={(e) => set("no_whatsapp", e.target.value)} />
         </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Jenis Kelamin</Label>
+        <Select value={form.jenis_kelamin} onValueChange={(v) => set("jenis_kelamin", v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="L">Putra (L)</SelectItem>
+            <SelectItem value="P">Putri (P)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">

@@ -228,6 +228,7 @@ export type Database = {
           created_at: string
           foto_url: string | null
           id: string
+          jenis_kelamin: string
           nama_lengkap: string
           nbm: string | null
           no_whatsapp: string | null
@@ -243,6 +244,7 @@ export type Database = {
           created_at?: string
           foto_url?: string | null
           id?: string
+          jenis_kelamin?: string
           nama_lengkap: string
           nbm?: string | null
           no_whatsapp?: string | null
@@ -258,6 +260,7 @@ export type Database = {
           created_at?: string
           foto_url?: string | null
           id?: string
+          jenis_kelamin?: string
           nama_lengkap?: string
           nbm?: string | null
           no_whatsapp?: string | null
