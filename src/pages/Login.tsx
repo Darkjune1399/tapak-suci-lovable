@@ -26,7 +26,7 @@ export default function Login() {
         await signUp(email, password, fullName);
         toast({
           title: "Berhasil mendaftar",
-          description: "Silakan cek email untuk verifikasi, lalu login.",
+          description: "Silakan cek email untuk verifikasi, lalu login."
         });
         setIsSignUp(false);
       } else {
@@ -37,7 +37,7 @@ export default function Login() {
       toast({
         title: isSignUp ? "Gagal mendaftar" : "Gagal masuk",
         description: err.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
@@ -58,18 +58,18 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
-              <div className="space-y-2">
+            {isSignUp &&
+            <div className="space-y-2">
                 <Label htmlFor="fullName">Nama Lengkap</Label>
                 <Input
-                  id="fullName"
-                  placeholder="Nama lengkap"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
+                id="fullName"
+                placeholder="Nama lengkap"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required />
+
               </div>
-            )}
+            }
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -78,8 +78,8 @@ export default function Login() {
                 placeholder="admin@tapaksuci.org"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+                required />
+
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -89,25 +89,25 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
-              />
+                minLength={6} />
+
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (isSignUp ? "Mendaftar..." : "Masuk...") : (isSignUp ? "Daftar" : "Masuk")}
+              {isLoading ? isSignUp ? "Mendaftar..." : "Masuk..." : isSignUp ? "Daftar" : "Masuk"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               {isSignUp ? "Sudah punya akun?" : "Belum punya akun?"}{" "}
-              <button
-                type="button"
-                className="text-primary underline hover:text-primary/80"
-                onClick={() => setIsSignUp(!isSignUp)}
-              >
-                {isSignUp ? "Masuk" : "Daftar"}
-              </button>
+              
+
+
+
+
+
+
             </p>
           </form>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>);
+
 }
