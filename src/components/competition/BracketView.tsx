@@ -108,7 +108,7 @@ export function BracketView({ matches, participants, totalRounds, onSelectWinner
                         className={cn(
                           "rounded-lg border overflow-hidden text-sm shadow-sm",
                           isBye && "opacity-40 border-dashed",
-                          isCompleted && "border-accent"
+                          isCompleted && "border-primary"
                         )}
                       >
                         {/* Player 1 */}
@@ -120,16 +120,16 @@ export function BracketView({ matches, participants, totalRounds, onSelectWinner
                             onSelectWinner?.(match.id, match.participant1_id)
                           }
                           className={cn(
-                            "w-full flex items-center gap-2 px-3 py-2.5 text-left border-b transition-colors",
+                            "w-full flex items-center gap-2 px-3 py-2.5 text-left border-b transition-colors text-foreground",
                             match.winner_id === match.participant1_id &&
-                              "bg-accent/10 font-semibold text-accent-foreground",
+                              "bg-primary/10 font-semibold",
                             canSelectWinner && "hover:bg-muted cursor-pointer",
                             !canSelectWinner && "cursor-default"
                           )}
                         >
                           <span className="flex-1 truncate">{p1Name}</span>
                           {match.winner_id === match.participant1_id && (
-                            <span className="text-xs text-accent font-bold">W</span>
+                            <span className="text-xs text-primary font-bold">W</span>
                           )}
                         </button>
                         {/* Player 2 */}
@@ -141,16 +141,16 @@ export function BracketView({ matches, participants, totalRounds, onSelectWinner
                             onSelectWinner?.(match.id, match.participant2_id)
                           }
                           className={cn(
-                            "w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors",
+                            "w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors text-foreground",
                             match.winner_id === match.participant2_id &&
-                              "bg-accent/10 font-semibold text-accent-foreground",
+                              "bg-primary/10 font-semibold",
                             canSelectWinner && "hover:bg-muted cursor-pointer",
                             !canSelectWinner && "cursor-default"
                           )}
                         >
                           <span className="flex-1 truncate">{p2Name}</span>
                           {match.winner_id === match.participant2_id && (
-                            <span className="text-xs text-accent font-bold">W</span>
+                            <span className="text-xs text-primary font-bold">W</span>
                           )}
                         </button>
                       </div>
