@@ -262,7 +262,7 @@ export default function CompetitionDetail() {
       status: m.status,
     }));
 
-    const { data: insertedMatches, error } = await supabase
+    const { error } = await supabase
       .from("competition_matches")
       .insert(inserts)
       .select();
@@ -270,43 +270,6 @@ export default function CompetitionDetail() {
     if (error) {
       toast({ title: "Gagal generate bracket", description: error.message, variant: "destructive" });
     } else {
-      // Auto-advance BYE winners to next round (all rounds, cascading)
-      if (insertedMatches) {
-        const totalR = getRoundCount(bracketParticipants.length);
-        const matchesMap = new Map<string, any>();
-        insertedMatches.forEach((m: any) => matchesMap.set(m.id, { ...m }));
-
-        for (let round = 1; round <= totalR; round++) {
-          const roundMatches = Array.from(matchesMap.values()).filter((m: any) => m.round === round);
-          for (const match of roundMatches) {
-            const isBye = match.status === "bye" && match.winner_id;
-            const hasOneParticipant = !isBye && ((match.participant1_id && !match.participant2_id) || (!match.participant1_id && match.participant2_id));
-
-            if ((isBye || hasOneParticipant) && round < totalR) {
-              const winnerId = match.winner_id || match.participant1_id || match.participant2_id;
-              if (!winnerId) continue;
-
-              if (hasOneParticipant && match.status !== "bye") {
-                await supabase.from("competition_matches").update({ status: "bye", winner_id: winnerId }).eq("id", match.id);
-                matchesMap.get(match.id).status = "bye";
-                matchesMap.get(match.id).winner_id = winnerId;
-              }
-
-              const nextRound = round + 1;
-              const nextMatchNumber = Math.ceil(match.match_number / 2);
-              const isTopSlot = match.match_number % 2 === 1;
-              const nextMatch = Array.from(matchesMap.values()).find(
-                (m: any) => m.round === nextRound && m.match_number === nextMatchNumber
-              );
-              if (nextMatch) {
-                const field = isTopSlot ? "participant1_id" : "participant2_id";
-                await supabase.from("competition_matches").update({ [field]: winnerId }).eq("id", nextMatch.id);
-                matchesMap.get(nextMatch.id)[field] = winnerId;
-              }
-            }
-          }
-        }
-      }
       toast({ title: "Bracket berhasil di-generate!" });
       fetchMatches();
     }
@@ -360,6 +323,8 @@ export default function CompetitionDetail() {
     const match = matches.find((m) => m.id === matchId);
     if (!match) return;
 
+    const isByeMatch = match.status === "bye";
+
     const { error } = await supabase
       .from("competition_matches")
       .update({ winner_id: winnerId, status: "completed" })
@@ -370,60 +335,34 @@ export default function CompetitionDetail() {
       return;
     }
 
-    // Advance winner to next round, then cascade BYEs
+    // Advance winner to next round
     const totalRounds = getRoundCount(participants.length);
-    let currentWinnerId = winnerId;
-    let currentRound = match.round;
-    let currentMatchNumber = match.match_number;
+    if (match.round < totalRounds) {
+      const nextRound = match.round + 1;
+      const nextMatchNumber = Math.ceil(match.match_number / 2);
+      const isTopSlot = match.match_number % 2 === 1;
 
-    // Fetch latest matches from DB for accurate state
-    const { data: latestMatches } = await supabase
-      .from("competition_matches")
-      .select("*")
-      .eq("category_id", selectedCat!)
-      .order("round")
-      .order("match_number");
-
-    const matchesLocal = new Map<string, any>();
-    latestMatches?.forEach((m: any) => matchesLocal.set(m.id, { ...m }));
-
-    while (currentRound < totalRounds) {
-      const nextRound = currentRound + 1;
-      const nextMatchNumber = Math.ceil(currentMatchNumber / 2);
-      const isTopSlot = currentMatchNumber % 2 === 1;
-
-      const nextMatch = Array.from(matchesLocal.values()).find(
-        (m: any) => m.round === nextRound && m.match_number === nextMatchNumber
+      const nextMatch = matches.find(
+        (m) => m.round === nextRound && m.match_number === nextMatchNumber
       );
 
-      if (!nextMatch) break;
+      if (nextMatch) {
+        const field = isTopSlot ? "participant1_id" : "participant2_id";
+        const otherField = isTopSlot ? "participant2_id" : "participant1_id";
 
-      // Place winner in the correct slot
-      const field = isTopSlot ? "participant1_id" : "participant2_id";
-      await supabase.from("competition_matches").update({ [field]: currentWinnerId }).eq("id", nextMatch.id);
-      matchesLocal.get(nextMatch.id)[field] = currentWinnerId;
+        // Place winner in slot
+        await supabase.from("competition_matches").update({ [field]: winnerId }).eq("id", nextMatch.id);
 
-      // Check if next match is now a BYE (only one participant)
-      const updated = matchesLocal.get(nextMatch.id);
-      const p1 = updated.participant1_id;
-      const p2 = updated.participant2_id;
-      const hasOnlyOne = (p1 && !p2) || (!p1 && p2);
-
-      if (hasOnlyOne) {
-        const autoWinner = p1 || p2;
-        await supabase.from("competition_matches").update({ winner_id: autoWinner, status: "bye" }).eq("id", nextMatch.id);
-        matchesLocal.get(nextMatch.id).winner_id = autoWinner;
-        matchesLocal.get(nextMatch.id).status = "bye";
-        currentWinnerId = autoWinner;
-        currentRound = nextRound;
-        currentMatchNumber = nextMatchNumber;
-        // Continue cascading
-      } else {
-        break;
+        // Check if the opponent slot is empty (making it a BYE match for next round)
+        const opponentId = (nextMatch as any)[otherField];
+        if (!opponentId) {
+          // Mark as BYE so user can click to advance
+          await supabase.from("competition_matches").update({ [field]: winnerId, status: "bye" }).eq("id", nextMatch.id);
+        }
       }
     }
 
-    toast({ title: "Pemenang ditetapkan" });
+    toast({ title: isByeMatch ? "Peserta dimajukan ke babak selanjutnya" : "Pemenang ditetapkan" });
     fetchMatches();
   };
 

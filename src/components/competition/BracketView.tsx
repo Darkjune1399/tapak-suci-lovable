@@ -87,9 +87,8 @@ export function BracketView({ matches, participants, totalRounds, onSelectWinner
                   const canSelectWinner =
                     canEdit &&
                     !isCompleted &&
-                    !isBye &&
                     match.participant1_id &&
-                    match.participant2_id;
+                    (match.participant2_id || isBye);
 
                   return (
                     <div key={match.id} className="relative">
