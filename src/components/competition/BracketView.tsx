@@ -60,24 +60,43 @@ export function BracketView({ matches, participants, totalRounds, onSelectWinner
     return participantMap.get(id) || "—";
   };
 
+  const matchCardHeight = 80;
+  const baseGap = 48;
+
+  const getSpaceBetween = (roundIdx: number) =>
+    baseGap * Math.pow(2, roundIdx) + matchCardHeight * (Math.pow(2, roundIdx) - 1);
+
+  const getTopPadding = (roundIdx: number) =>
+    roundIdx === 0 ? 0 : (getSpaceBetween(roundIdx) - baseGap) / 2;
+
+  // Calculate vertical center of a match card within its round
+  const getMatchCenterY = (roundIdx: number, matchIdx: number) => {
+    const topPad = getTopPadding(roundIdx);
+    const space = getSpaceBetween(roundIdx);
+    // label height ~28px
+    const labelOffset = 28;
+    return labelOffset + topPad + matchIdx * (matchCardHeight + space) + matchCardHeight / 2;
+  };
+
   return (
     <div className="overflow-x-auto pb-4">
-      <div className="flex gap-8 min-w-max items-start">
+      <div className="flex min-w-max items-start">
         {roundGroups.map((roundMatches, roundIdx) => {
           const round = roundIdx + 1;
-          const matchHeight = 80; // px per match card
-          const baseGap = 48; // base gap between round-1 matches
-          const spaceBetween = baseGap * Math.pow(2, roundIdx) + matchHeight * (Math.pow(2, roundIdx) - 1);
-          const topPadding = roundIdx === 0 ? 0 : (spaceBetween - baseGap) / 2;
+          const spaceBetween = getSpaceBetween(roundIdx);
+          const topPadding = getTopPadding(roundIdx);
+          const connectorWidth = 32;
 
           return (
-            <div key={round} className="flex flex-col items-center" style={{ minWidth: 230 }}>
-              <div className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wide">
-                {getRoundLabel(round, totalRounds)}
-              </div>
-              <div
-                className="flex flex-col w-full"
-                style={{ gap: `${spaceBetween}px`, paddingTop: `${topPadding}px` }}>
+            <div key={round} className="flex items-start">
+              {/* Round column */}
+              <div className="flex flex-col items-center" style={{ minWidth: 230 }}>
+                <div className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wide">
+                  {getRoundLabel(round, totalRounds)}
+                </div>
+                <div
+                  className="flex flex-col w-full"
+                  style={{ gap: `${spaceBetween}px`, paddingTop: `${topPadding}px` }}>
 
                 {roundMatches.map((match) => {
                   const p1Name = getName(match.participant1_id);
@@ -164,11 +183,43 @@ export function BracketView({ matches, participants, totalRounds, onSelectWinner
                     </div>);
 
                 })}
+                </div>
               </div>
-            </div>);
 
+              {/* Connector lines to next round */}
+              {round < totalRounds && (
+                <svg
+                  width={connectorWidth}
+                  className="flex-shrink-0"
+                  style={{
+                    height: getTopPadding(roundIdx) * 2 + roundMatches.length * matchCardHeight + (roundMatches.length - 1) * spaceBetween + 28,
+                    marginTop: 0,
+                  }}
+                >
+                  {roundMatches.map((_, matchIdx) => {
+                    if (matchIdx % 2 !== 0) return null;
+                    const y1 = getMatchCenterY(roundIdx, matchIdx);
+                    const y2 = getMatchCenterY(roundIdx, matchIdx + 1);
+                    const midY = (y1 + y2) / 2;
+                    const halfW = connectorWidth / 2;
+
+                    return (
+                      <g key={matchIdx} className="stroke-border" strokeWidth={1.5} fill="none">
+                        {/* Line from top match to mid */}
+                        <line x1={0} y1={y1} x2={halfW} y2={y1} />
+                        <line x1={halfW} y1={y1} x2={halfW} y2={y2} />
+                        <line x1={0} y1={y2} x2={halfW} y2={y2} />
+                        {/* Line from mid to next round */}
+                        <line x1={halfW} y1={midY} x2={connectorWidth} y2={midY} />
+                      </g>
+                    );
+                  })}
+                </svg>
+              )}
+            </div>
+          );
         })}
       </div>
-    </div>);
-
+    </div>
+  );
 }
